@@ -55,26 +55,6 @@ void setup() {
   client.setServer(mqtt_host, mqtt_port);
   client.setCallback(callback);
   reconnect();
-  attachInterrupt(input_pin,Interrupt,RISING);
-}
-
-
-
-void Interrupt()
-{
-  if((long)(micros() - last_micros) >= debouncing_time * 1000) {
-    if(debugOutput) Serial.println("Button pressed!");  
-    toggleRelais();
-    last_micros = micros();
-  }
-}
-
-void toggleRelais()
-{
-  relaisstate = !relaisstate;
-  digitalWrite(output_pin, relaisstate);
-  digitalWrite(led_pin, relaisstate);
-  sendRelaisStatus();
 }
 
 void sendRelaisStatus()

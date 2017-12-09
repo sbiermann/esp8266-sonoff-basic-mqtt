@@ -91,21 +91,17 @@ void callback(char* topic, uint8_t* payload, unsigned int length) {
   }
   if(debugOutput){ Serial.print("relaisstate = "); Serial.println(relaisstate); }
   digitalWrite(output_pin, relaisstate);
-  
+  sendRelaisStatus();
 }
 
 void loop() 
 {
-  if (millis() > next_timestamp )    
-  {    
-    next_timestamp  = millis()+10000; //intervall is 10s
-    sendRelaisStatus();
-  }
   if(WiFi.status() != WL_CONNECTED) {
       ESP.restart();
       delay(100);
   }
-  client.loop();
+  if(!client.loop())
+   reconnect();
   yield(); 
 }
 

@@ -7,6 +7,7 @@
 
 unsigned long  next_timestamp = 0;
 volatile unsigned long last_micros;
+volatile bool changeState = false;
 long debouncing_time = 5; //in millis
 int input_pin = 0;
 int led_pin = 13;
@@ -36,13 +37,13 @@ void setup() {
   WiFi.begin(ssid, password);
   int maxWait = 500;
   while (WiFi.status() != WL_CONNECTED) {
-    digitalWrite(led_pin, LOW);          // Blink to indicate setup
+    digitalWrite(led_pin, HIGH);          // Blink to indicate setup
     delay(500);
     if(debugOutput) Serial.print(".");
     if(maxWait <= 0)
      ESP.restart();
     maxWait--;
-    digitalWrite(led_pin, HIGH);
+    digitalWrite(led_pin, LOW);
   }
   if(debugOutput){
     Serial.println("");
@@ -55,6 +56,8 @@ void setup() {
   client.setServer(mqtt_host, mqtt_port);
   client.setCallback(callback);
   reconnect();
+  digitalWrite(led_pin, LOW);
+  attachInterrupt(input_pin,Interrupt,RISING);
 }
 
 void sendRelaisStatus()
@@ -81,15 +84,28 @@ void callback(char* topic, uint8_t* payload, unsigned int length) {
   }
   if ((char)payload[0] == '0') {   
     relaisstate = LOW;
-    digitalWrite(led_pin, HIGH);
   } else if ((char)payload[0] == '1') { 
     relaisstate = HIGH;
-    digitalWrite(led_pin, LOW);
   } else if ((char)payload[0] == '2') {
-    digitalWrite(led_pin, relaisstate);
     relaisstate = !relaisstate;
   }
   if(debugOutput){ Serial.print("relaisstate = "); Serial.println(relaisstate); }
+  digitalWrite(output_pin, relaisstate);
+  sendRelaisStatus();
+}
+
+void Interrupt()
+{
+  if((long)(micros() - last_micros) >= debouncing_time * 1000) {
+    if(debugOutput) Serial.println("Button pressed!");  
+    changeState = true;
+    last_micros = micros();
+  }
+}
+
+void toggleRelais()
+{
+  relaisstate = !relaisstate;
   digitalWrite(output_pin, relaisstate);
   sendRelaisStatus();
 }
@@ -103,6 +119,11 @@ void loop()
   if(!client.loop())
    reconnect();
   yield(); 
+  if(changeState)
+  {
+    changeState = false;
+    toggleRelais();
+  }
 }
 
 void reconnect() {
